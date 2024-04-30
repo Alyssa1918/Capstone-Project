@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import scipy.optimize as opt
-import matplotlib.pyplot as plt
 
 def load_data(location):
     df = pd.read_excel(rf"{location}", header=None)
@@ -10,12 +9,29 @@ def load_data(location):
 
 def section_df(df):
     sectioned_df = []
-    for i in range(3,21):
+    for i in range(3,20):
         temp_df = []
         for j in range(len(df)):
             temp_df.append(df[j][0:i])
         sectioned_df.append(temp_df)
     return sectioned_df
+
+def get_ts_df(all_t1_indices, all_t2_indices, all_t3_indices, df):
+    t1_df = []
+    t2_df = []
+    t3_df = []
+    count = 0
+    for i in range(len(all_t1_indices)):
+        t1_df.append(df[count][:all_t1_indices[i]])
+        t2_df.append(df[count][:all_t2_indices[i]])
+        t3_df.append(df[count][:all_t3_indices[i]])
+        count += 1
+        t1_df.append(df[count][:all_t1_indices[i]])
+        t2_df.append(df[count][:all_t2_indices[i]])
+        t3_df.append(df[count][:all_t3_indices[i]])
+        count += 1
+
+    return (t1_df, t2_df, t3_df)
 
 def get_y(df):
     y = []
@@ -122,10 +138,6 @@ def calc_concs_diff_avg(all_times, all_abc, all_concs):
     for i,times in enumerate(all_times):
         conc = all_abc[i][0] * times**all_abc[i][1] * np.e**(-times/all_abc[i][2])
         pred_concs.append(conc)
-        # plt.plot(times, conc)
-        # plt.plot(times, all_concs[i])
-        # plt.show()
-      
     
     diffs = []
     for i in range(len(all_concs)):
@@ -170,8 +182,11 @@ def calc_ts_diff_avg(all_t1_indices, all_t2_indices, all_t3_indices, all_times, 
     return avg1, avg2, avg3
     
 
-def avg_z(all_z):
-    return np.average(np.array(all_z))
+def get_avg_t2_time(all_t2_indices, all_times):
+    all_t2_times = []
+    for i,times in enumerate(all_times):
+        all_t2_times.append(times[all_t2_indices[i]])
+    return np.average(np.array(all_t2_times))
 
 
 def print_avgs_and_ts_avgs(avgs, ts_avg):
@@ -180,40 +195,56 @@ def print_avgs_and_ts_avgs(avgs, ts_avg):
         print(f"Section {i + 1} | {avgs[i]:.5f} | {ts_avg[i][0]:.5f} | {ts_avg[i][1]:.5f} | {ts_avg[i][2]:.5f}")
 
 
-if __name__ == "__main__":
-    # question 1
-    df = load_data(r"C:\Users\alyla\OneDrive\Documents\Math 464\SlipStreamData.xlsx")
-    # y = get_y(df)
-    # phi1, phi2, phi3 = get_phi(df)
-    # all_u, all_delta, all_z = calc_min(y, phi1, phi2, phi3)
-    # all_abc = get_all_abc(all_u)
-    # avg = avg_z(all_z)
-    # print(avg)
+def print_ts_avgs_and_ts_ts_avgs(ts_avgs, ts_ts_avg):
+    print("ts Number | Avg Diff | Avg Diff at t1 | Avg Diff at t2 | Avg Diff at t3")
+    for i in range(len(ts_avgs)):
+        print(f"t{i + 1} | {ts_avgs[i]:.5f} | {ts_ts_avg[i][0]:.5f} | {ts_ts_avg[i][1]:.5f} | {ts_ts_avg[i][2]:.5f}")
 
-    # question 2 and 3
+
+def print_ts(all_t1_indices, all_t2_indices, all_t3_indices):
+    print("Patient Number | t1 Index | t2 Index | t3 Index")
+    for i in range(len(all_t1_indices)):
+        print(f"{i + 1} | {all_t1_indices[i]} | {all_t2_indices[i]} | {all_t3_indices[i]} ")
+
+
+if __name__ == "__main__":
+    df = load_data(r"C:\Users\alyla\OneDrive\Documents\Math 464\SlipStreamData.xlsx")
     sectioned_df = section_df(df)
     all_times = get_times(df)
     all_concs = get_concs(df)
     all_t1_indices, all_t2_indices, all_t3_indices = get_ts(all_concs)
-    avgs_lin_prog = []
     avgs = []
     ts_avg = []
     for section in sectioned_df:
         y = get_y(section)
         phi1, phi2, phi3 = get_phi(section)
         all_u, all_delta, all_z = calc_min(y, phi1, phi2, phi3)
-        avgs_lin_prog.append(avg_z(all_z))
         all_abc = get_all_abc(all_u)
         avg = calc_concs_diff_avg(all_times, all_abc, all_concs)
         t1_avg, t2_avg, t3_avg = calc_ts_diff_avg(all_t1_indices, all_t2_indices, all_t3_indices, all_times, all_abc, all_concs)
         avgs.append(avg)
         ts_avg.append((t1_avg, t2_avg, t3_avg))
     print_avgs_and_ts_avgs(avgs, ts_avg)
+    print()
+    print_ts(all_t1_indices, all_t2_indices, all_t3_indices)
+
+    ts_df = get_ts_df(all_t1_indices, all_t2_indices, all_t3_indices, df)
+    ts_avgs = []
+    ts_ts_avg = []
+    for t_df in ts_df:
+        y = get_y(t_df)
+        phi1, phi2, phi3 = get_phi(t_df)
+        all_u, all_delta, all_z = calc_min(y, phi1, phi2, phi3)
+        all_abc = get_all_abc(all_u)
+        avg = calc_concs_diff_avg(all_times, all_abc, all_concs)
+        t1_avg, t2_avg, t3_avg = calc_ts_diff_avg(all_t1_indices, all_t2_indices, all_t3_indices, all_times, all_abc, all_concs)
+        ts_avgs.append(avg)
+        ts_ts_avg.append((t1_avg, t2_avg, t3_avg))
+    print()
+    print_ts_avgs_and_ts_ts_avgs(ts_avgs, ts_ts_avg)
+
+    avg_t2_time = get_avg_t2_time(all_t2_indices, all_times)
+    print(f"\nAverage t2 Time: {avg_t2_time}")
     
-
-
-    # For question 2, run it at all available early time measures and choose the one with smallest error.
-
-    # Consider solving for t via the derivative set to 0
 
 
